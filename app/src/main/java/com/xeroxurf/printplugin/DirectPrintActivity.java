@@ -16,7 +16,7 @@ public class DirectPrintActivity extends AppCompatActivity {
     private MaterialButton photoButton,fileButton,sendButton;
     private TextView status,selection;
     private ImageView preview;
-    private Spinner copies,paper,dpiChoice,orientation,scaleMode,margin,toner,nup;
+    private Spinner copies,paper,dpiChoice,orientation,scaleMode,margin,toner,nup,pageFilter;
     private EditText percent,range;
     private SeekBar brightness,contrast;
     private CheckBox reverse;
@@ -35,8 +35,8 @@ public class DirectPrintActivity extends AppCompatActivity {
     private EditText field(LinearLayout root,String caption,String value,boolean number){label(root,caption);EditText e=new EditText(this);e.setSingleLine(true);e.setInputType(number?android.text.InputType.TYPE_CLASS_NUMBER:android.text.InputType.TYPE_CLASS_TEXT);e.setText(value);root.addView(e);controls.add(e);return e;}
     private SeekBar slider(LinearLayout root,String caption,int max,int initial,int offset){TextView t=label(root,caption+" "+(initial+offset));SeekBar b=new SeekBar(this);b.setMax(max);b.setProgress(initial);root.addView(b);controls.add(b);b.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener(){public void onProgressChanged(SeekBar s,int p,boolean user){t.setText(caption+" "+(p+offset));}public void onStartTrackingTouch(SeekBar s){}public void onStopTrackingTouch(SeekBar s){}});return b;}
     private DirectPrintOptions currentOptions(){
-        int pct=100;if(scaleMode.getSelectedItemPosition()==2){try{pct=Integer.parseInt(percent.getText().toString());}catch(NumberFormatException e){throw new IllegalArgumentException("Enter scale 10–200%.");}if(pct<10||pct>200)throw new IllegalArgumentException("Scale must be 10–200%.");}
-        return new DirectPrintOptions(paper.getSelectedItemPosition(),new int[]{600,300,150}[dpiChoice.getSelectedItemPosition()],orientation.getSelectedItemPosition(),scaleMode.getSelectedItemPosition(),pct,new int[]{5,10,15,20}[margin.getSelectedItemPosition()],toner.getSelectedItemPosition(),brightness.getProgress()-60,contrast.getProgress()+50,new int[]{1,2,4}[nup.getSelectedItemPosition()],range.getText().toString(),reverse.isChecked());
+        int pct=100;if(scaleMode.getSelectedItemPosition()==2||scaleMode.getSelectedItemPosition()==3){try{pct=Integer.parseInt(percent.getText().toString());}catch(NumberFormatException e){throw new IllegalArgumentException("Enter scale 10–200%.");}if(pct<10||pct>200)throw new IllegalArgumentException("Scale must be 10–200%.");}
+        return new DirectPrintOptions(paper.getSelectedItemPosition(),new int[]{600,300,150}[dpiChoice.getSelectedItemPosition()],orientation.getSelectedItemPosition(),scaleMode.getSelectedItemPosition(),pct,new int[]{5,10,15,20}[margin.getSelectedItemPosition()],toner.getSelectedItemPosition(),brightness.getProgress()-60,contrast.getProgress()+50,new int[]{1,2,4}[nup.getSelectedItemPosition()],range.getText().toString(),reverse.isChecked(),pageFilter.getSelectedItemPosition());
     }
     @Override protected void onCreate(Bundle state){
         super.onCreate(state);
@@ -59,15 +59,17 @@ public class DirectPrintActivity extends AppCompatActivity {
         paper=options(root,"Paper size","A4","A5 (experimental)","Letter (experimental)","Legal (experimental)");
         dpiChoice=options(root,"Raster resolution","600 DPI – standard","300 DPI – draft (experimental)","150 DPI – draft (experimental)");
         orientation=options(root,"Orientation","Auto","Portrait","Landscape");
-        scaleMode=options(root,"Sizing","Fit to printable area","Fill / crop","Custom % of fit");
-        percent=field(root,"Custom scale (10–200% of fit)","100",true);
+        scaleMode=options(root,"Sizing","Fit to printable area","Fill / crop","Custom % of fit","Actual PDF size (%)");
+        percent=field(root,"Custom scale (10–200%)","100",true);
         margin=options(root,"Margins","5 mm","10 mm","15 mm","20 mm");
         toner=options(root,"Toner saving (software)","Off","Eco – lighter","Maximum – much lighter");
         brightness=slider(root,"Brightness",120,60,-60);
         contrast=slider(root,"Contrast %",100,50,50);
         nup=options(root,"Pages per sheet","1","2","4");
         range=field(root,"PDF pages (e.g. 1,3-5; blank = all)","",false);
+        pageFilter=options(root,"Print subset","All selected pages","Odd pages only","Even pages only");
         reverse=new CheckBox(this);reverse.setText("Reverse page order");root.addView(reverse);controls.add(reverse);
+        label(root,"For manual two-sided printing, print odd pages, reinsert the paper and print even pages. Test one sheet first. Actual PDF size may crop; photos use fit scaling.");
         label(root,"Load matching paper. Non-A4 sizes and lower DPI may be rejected by this printer. If that happens, use A4 / 600 DPI.");
         refresh=button(root,"Update preview with settings");controls.add(refresh);
         refresh.setOnClickListener(v->{if(selected!=null&&!busy)loadPreview();});
@@ -78,7 +80,7 @@ public class DirectPrintActivity extends AppCompatActivity {
         if(state!=null&&state.getString("uri")!=null){selected=Uri.parse(state.getString("uri"));selectedPdf=state.getBoolean("pdf");copies.setSelection(state.getInt("copies"));loadPreview();}
     }
     private void pick(boolean pdf){Intent i=new Intent(Intent.ACTION_OPEN_DOCUMENT);i.addCategory(Intent.CATEGORY_OPENABLE);i.setType(pdf?"application/pdf":"image/*");i.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);try{startActivityForResult(i,pdf?802:801);}catch(Exception e){status.setText("Unable to open file picker.");}}
-    @Override protected void onActivityResult(int req,int result,Intent data){super.onActivityResult(req,result,data);if((req!=801&&req!=802)||result!=RESULT_OK||data==null||data.getData()==null)return;selected=data.getData();selectedPdf=req==802;range.setText("");try{getContentResolver().takePersistableUriPermission(selected,data.getFlags()&Intent.FLAG_GRANT_READ_URI_PERMISSION);}catch(Exception ignored){}loadPreview();}
+    @Override protected void onActivityResult(int req,int result,Intent data){super.onActivityResult(req,result,data);if((req!=801&&req!=802)||result!=RESULT_OK||data==null||data.getData()==null)return;selected=data.getData();selectedPdf=req==802;range.setText("");pageFilter.setSelection(0);try{getContentResolver().takePersistableUriPermission(selected,data.getFlags()&Intent.FLAG_GRANT_READ_URI_PERMISSION);}catch(Exception ignored){}loadPreview();}
     private String nameOf(Uri uri){try(Cursor c=getContentResolver().query(uri,new String[]{OpenableColumns.DISPLAY_NAME},null,null,null)){if(c!=null&&c.moveToFirst()&&c.getString(0)!=null)return c.getString(0);}catch(Exception ignored){}return selectedPdf?"Document.pdf":"Photo";}
     private void setBusy(boolean value){busy=value;if(value)getWindow().addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);else getWindow().clearFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);photoButton.setEnabled(!value);fileButton.setEnabled(!value);sendButton.setEnabled(!value&&ready);copies.setEnabled(!value);for(View control:controls)control.setEnabled(!value);refresh.setEnabled(!value&&selected!=null);progress.setVisibility(value?View.VISIBLE:View.GONE);}
     private void showStatus(String s){runOnUiThread(()->{if(!isDestroyed())status.setText(s);});}

@@ -73,17 +73,17 @@ final class DirectPrintDocument implements Closeable {
             float right=left+cellW-gutter,bottom=top+cellH-gutter;
             Rect clip=new Rect(Math.max(0,(int)Math.ceil(left)),Math.max(0,(int)Math.ceil(top)),Math.min(target.getWidth(),(int)Math.floor(right)),Math.min(target.getHeight(),(int)Math.floor(bottom)));
             if(clip.isEmpty())continue;
-            if(pdf!=null){try(PdfRenderer.Page page=pdf.openPage(selected.get(index))){renderCell(target,page,opts,left,top,right,bottom,clip);}}
-            else renderCell(target,null,opts,left,top,right,bottom,clip);
+            if(pdf!=null){try(PdfRenderer.Page page=pdf.openPage(selected.get(index))){renderCell(target,page,opts,left,top,right,bottom,clip,width);}}
+            else renderCell(target,null,opts,left,top,right,bottom,clip,width);
         }
     }
-    private void renderCell(Bitmap target,PdfRenderer.Page page,DirectPrintOptions opts,float left,float top,float right,float bottom,Rect clip){
+    private void renderCell(Bitmap target,PdfRenderer.Page page,DirectPrintOptions opts,float left,float top,float right,float bottom,Rect clip,int sheetWidth){
         int w=page==null?photo.getWidth():page.getWidth(),h=page==null?photo.getHeight():page.getHeight();
         float cw=right-left,ch=bottom-top;
         boolean rotate=opts.orientation==2||(opts.orientation==0&&Math.min(cw/h,ch/w)>Math.min(cw/w,ch/h));
         float rw=rotate?h:w,rh=rotate?w:h;
         float scale=opts.scaleMode==1?Math.max(cw/rw,ch/rh):Math.min(cw/rw,ch/rh);
-        if(opts.scaleMode==2)scale*=opts.percent/100f;
+        if(opts.scaleMode==2||opts.scaleMode==3){if(opts.scaleMode==3&&page!=null)scale=(opts.dpi/72f)*(sheetWidth/(float)opts.width());scale*=opts.percent/100f;}
         float x=left+(cw-scale*rw)/2,y=top+(ch-scale*rh)/2;
         Matrix m=new Matrix();if(rotate)m.setValues(new float[]{0,-scale,x+h*scale,scale,0,y,0,0,1});else m.setValues(new float[]{scale,0,x,0,scale,y,0,0,1});
         if(page!=null)page.render(target,clip,m,PdfRenderer.Page.RENDER_MODE_FOR_PRINT);
@@ -92,7 +92,7 @@ final class DirectPrintDocument implements Closeable {
     private static void applyTone(Bitmap bitmap,DirectPrintOptions opts){
         if(opts.toner==0&&opts.brightness==0&&opts.contrast==100)return;
         int w=bitmap.getWidth(),h=bitmap.getHeight();int[] row=new int[w];
-        for(int y=0;y<h;y++){bitmap.getPixels(row,0,w,0,y,w,1);for(int x=0;x<w;x++){int c=row[x],g=(Color.red(c)*77+Color.green(c)*150+Color.blue(c)*29)>>8;row[x]=Color.rgb(opts.gray(g),opts.gray(g),opts.gray(g));}bitmap.setPixels(row,0,w,0,y,w,1);}
+        for(int y=0;y<h;y++){bitmap.getPixels(row,0,w,0,y,w,1);for(int x=0;x<w;x++){int c=row[x],g=(Color.red(c)*77+Color.green(c)*150+Color.blue(c)*29)>>8;int v=opts.gray(g);row[x]=Color.rgb(v,v,v);}bitmap.setPixels(row,0,w,0,y,w,1);}
     }
     @Override public void close(){if(pdf!=null){pdf.close();pdf=null;}if(photo!=null){photo.recycle();photo=null;}if(pdfFile!=null){pdfFile.delete();pdfFile=null;}}
 }

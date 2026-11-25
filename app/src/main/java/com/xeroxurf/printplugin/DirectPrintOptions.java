@@ -3,11 +3,11 @@ package com.xeroxurf.printplugin;
 import java.util.*;
 
 final class DirectPrintOptions {
-    final int paper,dpi,orientation,scaleMode,percent,margin,toner,brightness,contrast,nup;
+    final int paper,dpi,orientation,scaleMode,percent,margin,toner,brightness,contrast,nup,pageFilter;
     final String range;
     final boolean reverse;
-    DirectPrintOptions(int paper,int dpi,int orientation,int scaleMode,int percent,int margin,int toner,int brightness,int contrast,int nup,String range,boolean reverse){
-        this.paper=paper;this.dpi=dpi;this.orientation=orientation;this.scaleMode=scaleMode;this.percent=percent;this.margin=margin;this.toner=toner;this.brightness=brightness;this.contrast=contrast;this.nup=nup;this.range=range;this.reverse=reverse;
+    DirectPrintOptions(int paper,int dpi,int orientation,int scaleMode,int percent,int margin,int toner,int brightness,int contrast,int nup,String range,boolean reverse,int pageFilter){
+        this.paper=paper;this.dpi=dpi;this.orientation=orientation;this.scaleMode=scaleMode;this.percent=percent;this.margin=margin;this.toner=toner;this.brightness=brightness;this.contrast=contrast;this.nup=nup;this.range=range;this.reverse=reverse;this.pageFilter=pageFilter;
     }
     int width(){return (int)Math.round(new double[]{4960,3496,5100,5100}[paper]*dpi/600.0);}
     int height(){return (int)Math.round(new double[]{7015,4960,6600,8400}[paper]*dpi/600.0);}
@@ -22,7 +22,7 @@ final class DirectPrintOptions {
             if(a<1||b<a||b>count)throw new IllegalArgumentException("Page range must be within 1–"+count+".");
             for(int i=a;i<=b;i++)chosen.add(i-1);
         }
-        List<Integer> list=new ArrayList<>(chosen);if(reverse)Collections.reverse(list);if(list.isEmpty())throw new IllegalArgumentException("Select at least one page.");return list;
+        List<Integer> list=new ArrayList<>(chosen);if(pageFilter!=0){java.util.Iterator<Integer> it=list.iterator();while(it.hasNext()){int page=it.next()+1;if((pageFilter==1&&page%2==0)||(pageFilter==2&&page%2!=0))it.remove();}}if(reverse)Collections.reverse(list);if(list.isEmpty())throw new IllegalArgumentException("Select at least one page.");return list;
     }
     int sheets(int count){return (pages(count).size()+nup-1)/nup;}
     int gray(int value){

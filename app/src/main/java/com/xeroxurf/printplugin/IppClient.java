@@ -3,6 +3,9 @@ package com.xeroxurf.printplugin;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.ByteArrayInputStream;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.net.Socket;
@@ -28,12 +31,20 @@ public class IppClient {
     }
 
     public static IppResult sendPrintJob(String printerIp, byte[] urfData, String jobName) {
+        try (InputStream in = new ByteArrayInputStream(urfData)) { return sendStream(printerIp, in, urfData.length, jobName); }
+        catch (IOException e) { return new IppResult(false, -1, e.getMessage()); }
+    }
+    public static IppResult sendPrintJob(String printerIp, File file, String jobName) {
+        try (InputStream in = new FileInputStream(file)) { return sendStream(printerIp, in, file.length(), jobName); }
+        catch (IOException e) { return new IppResult(false, -1, e.getMessage()); }
+    }
+    private static IppResult sendStream(String printerIp, InputStream document, long length, String jobName) {
         PrintLog.i(TAG, "Sending IPP Print-Job to " + printerIp + ":" + IPP_PORT
-                + " (" + urfData.length + " bytes, job: " + jobName + ")");
+                + " (" + length + " bytes, job: " + jobName + ")");
 
         Socket socket = null;
         try {
-            byte[] ippRequest = buildIppPrintJob(printerIp, urfData, jobName);
+            byte[] ippRequest = buildIppPrintJob(printerIp, new byte[0], jobName);
 
             socket = new Socket();
             socket.connect(new InetSocketAddress(printerIp, IPP_PORT), CONNECT_TIMEOUT_MS);
@@ -42,13 +53,15 @@ public class IppClient {
             String httpHeader = "POST /ipp/print HTTP/1.1\r\n"
                     + "Host: " + printerIp + "\r\n"
                     + "Content-Type: application/ipp\r\n"
-                    + "Content-Length: " + ippRequest.length + "\r\n"
+                    + "Content-Length: "  + (ippRequest.length + length) + "\r\n"
                     + "Connection: close\r\n"
                     + "\r\n";
 
             OutputStream out = socket.getOutputStream();
             out.write(httpHeader.getBytes("UTF-8"));
             out.write(ippRequest);
+            byte[] buffer = new byte[65536]; int n;
+            while ((n = document.read(buffer)) != -1) out.write(buffer, 0, n);
             out.flush();
 
             InputStream in = socket.getInputStream();

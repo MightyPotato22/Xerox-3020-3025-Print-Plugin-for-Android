@@ -5,6 +5,7 @@ import android.graphics.Color;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.OutputStream;
 
 public class UrfEncoder {
 
@@ -109,7 +110,7 @@ public class UrfEncoder {
      * Byte 128: no-op (never used by encoder)
      * Byte 129-255: next (257-N) bytes are literal data
      */
-    private static void pwgEncodeLine(ByteArrayOutputStream out, byte[] row) {
+    private static void pwgEncodeLine(OutputStream out, byte[] row) throws IOException {
         int i = 0;
         while (i < row.length) {
             // Count run of identical bytes
@@ -149,7 +150,20 @@ public class UrfEncoder {
         }
     }
 
-    private static void writeInt(ByteArrayOutputStream out, int value) {
+    static void writeDocumentHeader(OutputStream out, int pages) throws IOException {
+        out.write(new byte[]{'U','N','I','R','A','S','T',0}); writeInt(out,pages);
+    }
+    static void writePageHeader(OutputStream out) throws IOException {
+        byte[] h = new byte[32]; h[0]=8; h[2]=1; putInt(h,12,A4_WIDTH_600); putInt(h,16,A4_HEIGHT_600); putInt(h,20,DPI_600); out.write(h);
+    }
+    static void writeStrip(OutputStream out, Bitmap bmp) throws IOException {
+        int y=0,w=bmp.getWidth(); while(y<bmp.getHeight()) {
+            byte[] row=bitmapRowToGray(bmp,y,w); int repeat=0;
+            while(y+repeat+1<bmp.getHeight() && repeat<255 && java.util.Arrays.equals(row,bitmapRowToGray(bmp,y+repeat+1,w))) repeat++;
+            out.write(repeat); pwgEncodeLine(out,row); y+=repeat+1;
+        }
+    }
+    private static void writeInt(OutputStream out, int value) throws IOException {
         out.write((value >> 24) & 0xFF);
         out.write((value >> 16) & 0xFF);
         out.write((value >> 8) & 0xFF);

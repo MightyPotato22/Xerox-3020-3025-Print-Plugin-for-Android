@@ -152,4 +152,5 @@
     <!-- Model Modes -->
     <string name="model_mode_print_scan" tools:ignore="MissingTranslation">Print &amp; Scan</string>
     <string name="model_mode_print_only" tools:ignore="MissingTranslation">Print only</string>
+    <string name="direct_print_card">Print photos &amp; files</string>
 </resources>

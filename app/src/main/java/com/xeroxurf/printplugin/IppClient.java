@@ -31,20 +31,21 @@ public class IppClient {
     }
 
     public static IppResult sendPrintJob(String printerIp, byte[] urfData, String jobName) {
-        try (InputStream in = new ByteArrayInputStream(urfData)) { return sendStream(printerIp, in, urfData.length, jobName); }
+        try (InputStream in = new ByteArrayInputStream(urfData)) { return sendStream(printerIp, in, urfData.length, jobName, null); }
         catch (IOException e) { return new IppResult(false, -1, e.getMessage()); }
     }
-    public static IppResult sendPrintJob(String printerIp, File file, String jobName) {
-        try (InputStream in = new FileInputStream(file)) { return sendStream(printerIp, in, file.length(), jobName); }
+    public static IppResult sendPrintJob(String printerIp, File file, String jobName) { return sendPrintJob(printerIp,file,jobName,null); }
+    public static IppResult sendPrintJob(String printerIp, File file, String jobName, String media) {
+        try (InputStream in = new FileInputStream(file)) { return sendStream(printerIp, in, file.length(), jobName, media); }
         catch (IOException e) { return new IppResult(false, -1, e.getMessage()); }
     }
-    private static IppResult sendStream(String printerIp, InputStream document, long length, String jobName) {
+    private static IppResult sendStream(String printerIp, InputStream document, long length, String jobName, String media) {
         PrintLog.i(TAG, "Sending IPP Print-Job to " + printerIp + ":" + IPP_PORT
                 + " (" + length + " bytes, job: " + jobName + ")");
 
         Socket socket = null;
         try {
-            byte[] ippRequest = buildIppPrintJob(printerIp, new byte[0], jobName);
+            byte[] ippRequest = buildIppPrintJob(printerIp, new byte[0], jobName, media);
 
             socket = new Socket();
             socket.connect(new InetSocketAddress(printerIp, IPP_PORT), CONNECT_TIMEOUT_MS);
@@ -323,7 +324,8 @@ public class IppClient {
         return -1;
     }
 
-    static byte[] buildIppPrintJob(String printerIp, byte[] documentData, String jobName) {
+    static byte[] buildIppPrintJob(String printerIp, byte[] documentData, String jobName) {return buildIppPrintJob(printerIp,documentData,jobName,null);}
+    static byte[] buildIppPrintJob(String printerIp, byte[] documentData, String jobName,String media) {
         ByteArrayOutputStream req = new ByteArrayOutputStream();
         try {
             // IPP version 1.1
@@ -343,6 +345,7 @@ public class IppClient {
             writeIppString(req, (byte) 0x42, "job-name", jobName != null ? jobName : "Document");
             writeIppString(req, (byte) 0x49, "document-format", "image/urf");
 
+            if(media!=null){req.write(0x02);writeIppString(req,(byte)0x44,"media",media);}
             // End of attributes
             req.write(0x03);
 

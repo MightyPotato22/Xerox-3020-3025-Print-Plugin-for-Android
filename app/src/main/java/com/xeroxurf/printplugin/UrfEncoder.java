@@ -153,8 +153,8 @@ public class UrfEncoder {
     static void writeDocumentHeader(OutputStream out, int pages) throws IOException {
         out.write(new byte[]{'U','N','I','R','A','S','T',0}); writeInt(out,pages);
     }
-    static void writePageHeader(OutputStream out) throws IOException {
-        byte[] h = new byte[32]; h[0]=8; h[2]=1; putInt(h,12,A4_WIDTH_600); putInt(h,16,A4_HEIGHT_600); putInt(h,20,DPI_600); out.write(h);
+    static void writePageHeader(OutputStream out,int width,int height,int dpi) throws IOException {
+        byte[] h = new byte[32]; h[0]=8; h[2]=1; putInt(h,12,width); putInt(h,16,height); putInt(h,20,dpi); out.write(h);
     }
     static void writeStrip(OutputStream out, Bitmap bmp) throws IOException {
         int y=0,w=bmp.getWidth(); while(y<bmp.getHeight()) {

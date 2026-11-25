@@ -284,6 +284,7 @@
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
+            <com.google.android.material.button.MaterialButton android:id="@+id/item_direct_print" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginBottom="24dp" android:text="@string/direct_print_card" />
             <!-- SCAN DOCUMENT ACTION CARD (Visible only for WorkCentre 3025) -->
             <com.google.android.material.card.MaterialCardView
                 android:id="@+id/card_scan_doc"

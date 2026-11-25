@@ -149,6 +149,7 @@ public class SettingsActivity extends AppCompatActivity {
             }
         });
 
+        findViewById(R.id.item_direct_print).setOnClickListener(v -> startActivity(new Intent(this, DirectPrintActivity.class)));
         itemScanDoc.setOnClickListener(v -> startActivity(new Intent(this, ScanActivity.class)));
         itemTestNetwork.setOnClickListener(v -> runNetworkTest());
         itemPrintTestPage.setOnClickListener(v -> runPrintTestPage());

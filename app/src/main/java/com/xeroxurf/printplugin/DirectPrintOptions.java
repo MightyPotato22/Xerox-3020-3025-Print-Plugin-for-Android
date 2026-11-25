@@ -12,8 +12,9 @@ final class DirectPrintOptions {
     int width(){return (int)Math.round(new double[]{4960,3496,5100,5100}[paper]*dpi/600.0);}
     int height(){return (int)Math.round(new double[]{7015,4960,6600,8400}[paper]*dpi/600.0);}
     String media(){return new String[]{"iso_a4_210x297mm","iso_a5_148x210mm","na_letter_8.5x11in","na_legal_8.5x14in"}[paper];}
-    List<Integer> pages(int count){
+    List<Integer> selectedPages(int count){
         LinkedHashSet<Integer> chosen=new LinkedHashSet<>();
+        if(range.trim().equalsIgnoreCase("none"))return new ArrayList<>();
         if(range.trim().isEmpty()||range.trim().equalsIgnoreCase("all")){for(int i=0;i<count;i++)chosen.add(i);}
         else for(String part:range.split(",",-1)){
             String[] bounds=part.trim().split("-", -1);
@@ -22,9 +23,12 @@ final class DirectPrintOptions {
             if(a<1||b<a||b>count)throw new IllegalArgumentException("Page range must be within 1–"+count+".");
             for(int i=a;i<=b;i++)chosen.add(i-1);
         }
-        List<Integer> list=new ArrayList<>(chosen);if(pageFilter!=0){java.util.Iterator<Integer> it=list.iterator();while(it.hasNext()){int page=it.next()+1;if((pageFilter==1&&page%2==0)||(pageFilter==2&&page%2!=0))it.remove();}}if(reverse)Collections.reverse(list);if(list.isEmpty())throw new IllegalArgumentException("Select at least one page.");return list;
+        List<Integer> list=new ArrayList<>(chosen);if(pageFilter!=0){java.util.Iterator<Integer> it=list.iterator();while(it.hasNext()){int page=it.next()+1;if((pageFilter==1&&page%2==0)||(pageFilter==2&&page%2!=0))it.remove();}}if(reverse)Collections.reverse(list);return list;
     }
-    int sheets(int count){return (pages(count).size()+nup-1)/nup;}
+    List<Integer> pages(int count){List<Integer> list=selectedPages(count);if(list.isEmpty())throw new IllegalArgumentException("Select at least one page.");return list;}
+    int sheets(int count){return (selectedPages(count).size()+nup-1)/nup;}
+    DirectPrintOptions singlePage(){return new DirectPrintOptions(paper,dpi,orientation,scaleMode,percent,margin,toner,brightness,contrast,1,"",false,0);}
+    static String formatSelection(java.util.BitSet bits,int count){if(bits.cardinality()==0)return "none";if(bits.cardinality()==count)return "";StringBuilder out=new StringBuilder();for(int start=bits.nextSetBit(0);start>=0&&start<count;){int end=Math.min(count,bits.nextClearBit(start));if(out.length()>0)out.append(',');out.append(start+1);if(end>start+1)out.append('-').append(end);start=bits.nextSetBit(end);}return out.toString();}
     int gray(int value){
         if(value==255)return 255;
         int g=Math.max(0,Math.min(255,Math.round((value-128)*(contrast/100f)+128+brightness)));

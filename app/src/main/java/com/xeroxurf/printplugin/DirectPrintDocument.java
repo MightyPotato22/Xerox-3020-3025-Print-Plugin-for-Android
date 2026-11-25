@@ -39,10 +39,12 @@ final class DirectPrintDocument implements Closeable {
         try(InputStream in=context.getContentResolver().openInputStream(uri)){return BitmapFactory.decodeStream(in,null,options);}
     }
     int pageCount(){return pdf==null?1:pdf.getPageCount();}
-    Bitmap preview(DirectPrintOptions opts){
-        int width=500,height=Math.round(width*opts.height()/(float)opts.width());
+    Bitmap preview(DirectPrintOptions opts,int sheet){return previewSheet(opts,opts.pages(pageCount()),sheet,650);}
+    Bitmap previewSource(DirectPrintOptions opts,int sourcePage,int width){return previewSheet(opts.singlePage(),java.util.Collections.singletonList(sourcePage),0,width);}
+    private Bitmap previewSheet(DirectPrintOptions opts,java.util.List<Integer> chosen,int sheet,int width){
+        int height=Math.round(width*opts.height()/(float)opts.width());
         Bitmap bitmap=Bitmap.createBitmap(width,height,Bitmap.Config.ARGB_8888);
-        try{renderSheet(bitmap,opts,opts.pages(pageCount()),0,0,width,height);applyTone(bitmap,opts);return bitmap;}catch(RuntimeException|OutOfMemoryError e){bitmap.recycle();throw e;}
+        try{renderSheet(bitmap,opts,chosen,sheet,0,width,height);applyTone(bitmap,opts);return bitmap;}catch(RuntimeException|OutOfMemoryError e){bitmap.recycle();throw e;}
     }
     interface Progress{void page(int page,int total);}
     void writeUrf(File target,DirectPrintOptions opts,Progress progress)throws IOException{
